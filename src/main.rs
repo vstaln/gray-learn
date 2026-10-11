@@ -95,7 +95,11 @@ fn context_text(cwd: &str) -> Option<String> {
             }
         }
         if out.len() > CONTEXT_CAP {
-            let cut = out[..CONTEXT_CAP].rfind('\n').unwrap_or(CONTEXT_CAP);
+            let mut cap = CONTEXT_CAP;
+            while !out.is_char_boundary(cap) {
+                cap -= 1;
+            }
+            let cut = out[..cap].rfind('\n').unwrap_or(cap);
             out.truncate(cut);
             out.push_str("\n- … (truncated)\n");
         }
