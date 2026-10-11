@@ -70,6 +70,25 @@ gray account publish    # check → build → release → publish to the gray re
 Bump `version` in `Cargo.toml` before each `publish`; the registry refuses to
 republish a version.
 
+## Folded in: gray-harness
+
+Lessons now live in a continual-harness store (`src/mods/harness.rs`) — a
+mechanics port of [prime-agent](https://github.com/PrimeIntellect-ai/prime-agent)'s
+HarnessState + refinement loop (MIT-licensed; no prime-agent code is copied):
+
+- The `learn` tool is unchanged — it writes memory-kind entries into the
+  kinded store (`~/.gray/harness/{state.json,local/<cwd-hash>.json}`). Kinds:
+  `prompt`, `memory`, `skill`, `subagent`. Existing `~/.gray/learn/*.md`
+  files are imported once and renamed `*.imported`.
+- `harness_*` tools: upsert/get/delete/list/search/overview plus
+  `harness_record_refinement` and `harness_plan_refinement` (the planner
+  runs through `host/run` when the `host.turn` capability is granted).
+- `prompt/context` still injects "## Learned lessons" and now appends a
+  bounded "## Harness" digest of the other kinds.
+- `/harness` — list/show/delete/refine/rollback/status/on|off; auto-refine
+  arms on `turn_end` every 25 turns with a 20-minute cooldown, gated by a
+  review gate, recorded with inverse edits for `rollback`.
+
 ## Tags
 
 `gray` `plugin` `learn` `rust`
