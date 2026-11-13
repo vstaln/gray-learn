@@ -62,6 +62,10 @@ fn manifest() -> Value {
         "protocol": "1.1",
         "tools": tools,
         "commands": ["/learn", "/harness"],
+        "command_descriptions": {
+            "/learn": "list or forget saved lessons",
+            "/harness": "manage learned harness entries",
+        },
         "hooks": ["prompt/context"],
         "capabilities": ["host.turn", "host.say"],
         "subcommands": ["learn", "harness"],
