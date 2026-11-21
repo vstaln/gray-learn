@@ -85,11 +85,10 @@ fn config() -> Value {
     let mut cfg = json!({"auto": true, "every_n": 25, "cooldown_min": 20, "digest_bytes": 4096});
     if let Ok(v) =
         serde_json::from_str::<Value>(&std::fs::read_to_string(config_file()).unwrap_or_default())
+        && let Some(o) = v.as_object()
     {
-        if let Some(o) = v.as_object() {
-            for (k, v) in o {
-                cfg[k] = v.clone();
-            }
+        for (k, v) in o {
+            cfg[k] = v.clone();
         }
     }
     cfg
@@ -197,9 +196,9 @@ fn sha1_hex(data: &[u8]) -> String {
         msg.push(0);
     }
     msg.extend_from_slice(&bit_len.to_be_bytes());
-    for chunk in msg.chunks_exact(64) {
+    for chunk in msg.as_chunks::<64>().0 {
         let mut w = [0u32; 80];
-        for (i, word) in chunk.chunks_exact(4).enumerate() {
+        for (i, word) in chunk.as_chunks::<4>().0.iter().enumerate() {
             w[i] = u32::from_be_bytes([word[0], word[1], word[2], word[3]]);
         }
         for i in 16..80 {
@@ -707,11 +706,11 @@ fn extract_json(text: &str) -> Result<Value, String> {
             }
             '}' => {
                 depth -= 1;
-                if depth == 0 {
-                    if let Some(s) = start {
-                        return serde_json::from_str(&text[s..=i])
-                            .map_err(|e| format!("the model did not return valid JSON: {e}"));
-                    }
+                if depth == 0
+                    && let Some(s) = start
+                {
+                    return serde_json::from_str(&text[s..=i])
+                        .map_err(|e| format!("the model did not return valid JSON: {e}"));
                 }
             }
             _ => {}
@@ -839,9 +838,9 @@ fn run_refinement(
     if !inverse.is_empty() {
         event["inverse"] = json!(inverse);
     }
-    store["refinements"]
-        .as_array_mut()
-        .map(|r| r.push(event.clone()));
+    if let Some(r) = store["refinements"].as_array_mut() {
+        r.push(event.clone())
+    }
     save_store(scope, cwd, &store);
 
     let mut out = format!(
@@ -1173,7 +1172,9 @@ pub(crate) fn tool_call(sh: &Shared, params: &Value) -> Value {
                 "outcome": args["outcome"].as_str().unwrap_or(""),
                 "at": now(),
             });
-            store["refinements"].as_array_mut().map(|r| r.push(event));
+            if let Some(r) = store["refinements"].as_array_mut() {
+                r.push(event)
+            }
             save_store(&scope, &cwd, &store);
             Ok(format!("recorded ({scope})"))
         }
@@ -1187,7 +1188,7 @@ pub(crate) fn tool_call(sh: &Shared, params: &Value) -> Value {
             sh.refine_busy.store(false, Ordering::SeqCst);
             r
         }
-        other => return Err(format!("unknown tool {other}")),
+        other => Err(format!("unknown tool {other}")),
     })();
     match res {
         Ok(c) => json!({"content": c}),
@@ -1302,10 +1303,10 @@ pub(crate) fn command(sh: &Shared, params: &Value) -> String {
                             Err(e) => undone.push(e),
                         }
                     }
-                    if let Some(m) = store["refinements"].as_array_mut() {
-                        if let Some(last) = m.iter_mut().rev().find(|e| e["id"] == ev["id"]) {
-                            last["rolled_back"] = json!(true);
-                        }
+                    if let Some(m) = store["refinements"].as_array_mut()
+                        && let Some(last) = m.iter_mut().rev().find(|e| e["id"] == ev["id"])
+                    {
+                        last["rolled_back"] = json!(true);
                     }
                     save_store(scope, &cwd, &store);
                     format!(
