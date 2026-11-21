@@ -126,11 +126,9 @@ fn run_command(cwd: &str, argv: &[&str]) -> Value {
             let project = harness::lessons("local", cwd);
             let global = harness::lessons("global", cwd);
             if project.is_empty() && global.is_empty() {
-                return json!({ "text": format!(
-                    "no lessons yet — the agent saves them with the `learn` tool\n\
+                return json!({ "text": "no lessons yet — the agent saves them with the `learn` tool\n\
                      lessons live in the harness store under ~/.gray/harness/ \
-                     (project = local scope, global = ~/.gray/harness/state.json)"
-                )});
+                     (project = local scope, global = ~/.gray/harness/state.json)" });
             }
             let list = |lessons: &[String]| -> String {
                 lessons
@@ -280,7 +278,9 @@ fn sidecar() -> std::io::Result<()> {
         let stdin = std::io::stdin();
         for line in stdin.lock().lines() {
             let Ok(line) = line else { break };
-            let Ok(v) = serde_json::from_str::<Value>(&line) else { continue };
+            let Ok(v) = serde_json::from_str::<Value>(&line) else {
+                continue;
+            };
             if v.get("method").is_none()
                 && let Some(id) = v.get("id").and_then(Value::as_str)
                 && let Some(tx) = pending.lock().expect("pending").remove(id)
@@ -316,7 +316,7 @@ fn main() -> std::io::Result<()> {
             Ok(())
         }
         Some("harness") => {
-            println!("{}", harness::cli(&argv[1..].to_vec()));
+            println!("{}", harness::cli(&argv[1..]));
             Ok(())
         }
         Some("learn") => {
@@ -327,7 +327,10 @@ fn main() -> std::io::Result<()> {
             let v = run_command(&cwd, &args);
             println!(
                 "{}",
-                v["text"].as_str().or_else(|| v["prompt"].as_str()).unwrap_or("")
+                v["text"]
+                    .as_str()
+                    .or_else(|| v["prompt"].as_str())
+                    .unwrap_or("")
             );
             Ok(())
         }
